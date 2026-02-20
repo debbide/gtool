@@ -1418,6 +1418,9 @@ func genShareLinks(cfg ToolCfg) []ShareLink {
 }
 func startNezha() error {
 	cfg := GlobalConfig.Tools["nezha"]
+	cfg.DisableAutoUpdate = true
+	GlobalConfig.Tools["nezha"] = cfg
+	saveConfig()
 	if cfg.Version == "" {
 		cfg.Version = "v1"
 		GlobalConfig.Tools["nezha"] = cfg
@@ -1533,6 +1536,9 @@ uuid: %s
 
 func startKomari() error {
 	cfg := GlobalConfig.Tools["komari"]
+	cfg.DisableAutoUpdate = true
+	GlobalConfig.Tools["komari"] = cfg
+	saveConfig()
 	binPath := filepath.Join(DataDir, "bin", getRandomFileName("komari", "bin"))
 	if runtime.GOOS == "windows" {
 		binPath += ".exe"
@@ -2107,7 +2113,11 @@ func setupAPIRoutes() {
 				GlobalConfig.Tools = make(map[string]ToolCfg)
 			}
 			current := GlobalConfig.Tools[name]
-			GlobalConfig.Tools[name] = mergeToolCfgWithRaw(current, body, raw)
+			merged := mergeToolCfgWithRaw(current, body, raw)
+			if name == "nezha" || name == "komari" {
+				merged.DisableAutoUpdate = true
+			}
+			GlobalConfig.Tools[name] = merged
 			saveConfig()
 			logEvent("api", "info", "[tools/config] "+name)
 		} else {
