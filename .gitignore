@@ -1,15 +1,24 @@
-# Binaries
+# Binaries and executables
 server
 server.exe
-server-linux-amd64
-server-linux-arm64
+server-linux-*
 tools-standalone.exe
+tool
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
 
-# Data and Secret
+# Data and Secret (CRITICAL: DO NOT PUSH)
 data/
 config.json
 filemap.dat
 
-# System
+# System and IDE
 .DS_Store
+Thumbs.db
+.idea/
+.vscode/
 *.log
+*.tmp
