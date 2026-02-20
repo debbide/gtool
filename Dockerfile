@@ -21,5 +21,8 @@ COPY --from=builder /app/server /server
 # Important for SSL connections (Cloudflare/API calls)
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
+# Define persistence volume for data
+VOLUME ["/data"]
+
 # Command to run
 ENTRYPOINT ["/server"]
