@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tools Standalone</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --primary: #5eead4;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+    h1 { text-align: center; margin-bottom: 10px; color: var(--primary); }
+    .subtitle { text-align: center; color: var(--muted); margin-bottom: 30px; font-size: 14px; }
+    .card {
+      background: rgba(42, 58, 66, 0.5);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 16px;
+      border: 1px solid rgba(94, 234, 212, 0.2);
+    }
+    .card:hover { border-color: rgba(94, 234, 212, 0.5); }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .card-title { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .dot.online { background: var(--primary); box-shadow: 0 0 10px rgba(94, 234, 212, 0.5); }
+    .dot.offline { background: var(--muted); }
+    .dot.installed { background: var(--warning); }
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    .btn-primary { background: var(--primary); color: #000; }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-warning { background: var(--warning); color: #000; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; margin-bottom: 4px; font-size: 14px; color: var(--muted); }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+    }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); }
+    .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .login-page { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 1000; justify-content: center; align-items: center; }
+    .login-page.active { display: flex; }
+    .login-card { background: var(--card); padding: 40px; border-radius: 16px; width: 100%; max-width: 400px; }
+    .login-card h1 { margin-bottom: 30px; }
+    .toast { position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; background: var(--success); color: #fff; z-index: 9999; animation: slideIn 0.3s; }
+    .toast.error { background: var(--danger); }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .logs { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; margin-top: 20px; }
+    .log-entry { padding: 2px 0; border-bottom: 1px solid var(--border); }
+    .log-entry:last-child { border-bottom: none; }
+    .tab-bar { display: flex; gap: 10px; margin-bottom: 20px; }
+    .tab-btn { background: var(--card); border: 1px solid var(--border); color: var(--muted); padding: 10px 20px; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-weight: 500; }
+    .tab-btn.active { background: var(--primary); color: #000; border-color: var(--primary); }
+    .tab-btn:hover:not(.active) { border-color: var(--primary); color: var(--text); }
+    .file-list { display: flex; flex-direction: column; gap: 8px; }
+    .file-item { display: flex; align-items: center; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+    .file-item:hover { background: rgba(255,255,255,0.05); }
+    .file-icon { font-size: 20px; margin-right: 12px; width: 24px; text-align: center; }
+    .file-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: monospace; }
+    .file-meta { font-size: 12px; color: var(--muted); margin-left: 12px; min-width: 80px; text-align: right; }
+    .breadcrumb { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; overflow-x: auto; padding-bottom: 4px; }
+    .breadcrumb-item { color: var(--muted); cursor: pointer; white-space: nowrap; }
+    .breadcrumb-item:hover { color: var(--primary); }
+    .editor-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; display: none; flex-direction: column; padding: 20px; }
+    .editor-modal.active { display: flex; }
+    .editor-content { flex: 1; background: var(--bg); border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; max-width: 1000px; margin: 0 auto; width: 100%; border: 1px solid var(--border); }
+    .editor-header { padding: 12px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--card); }
+    .editor-body { flex: 1; padding: 0; position: relative; }
+    .editor-textarea { width: 100%; height: 100%; resize: none; background: #0d1117; color: #c9d1d9; border: none; padding: 16px; font-family: monospace; font-size: 14px; line-height: 1.5; outline: none; }
+    .context-menu { position: fixed; background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 4px 0; z-index: 3000; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.5); min-width: 120px; }
+    .context-menu-item { padding: 8px 16px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+    .context-menu-item:hover { background: var(--primary); color: #000; }
+    .context-menu-item.danger:hover { background: var(--danger); color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="login-page" id="loginPage">
+    <div class="login-card">
+      <h1>Tools Standalone</h1>
+      <div class="form-group"><label>用户名</label><input id="loginUser" value="admin" onkeydown="if(event.key==='Enter')login()"></div>
+      <div class="form-group"><label>密码</label><input type="password" id="loginPass" onkeydown="if(event.key==='Enter')login()"></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:20px" onclick="login()">登 录</button>
+    </div>
+  </div>
+  <div class="container" id="app" style="display:none"></div>
+  <div class="context-menu" id="fileContextMenu"></div>
+  <div class="editor-modal" id="editorModal">
+    <div class="editor-content">
+      <div class="editor-header">
+        <div id="editorTitle" style="font-weight:700">编辑文件</div>
+        <div style="display:flex;gap:12px">
+          <button class="btn btn-primary btn-sm" onclick="saveFile()">保存</button>
+          <button class="btn btn-danger btn-sm" onclick="closeEditor()">关闭</button>
+        </div>
+      </div>
+      <div class="editor-body">
+        <textarea id="editorTextarea" class="editor-textarea" spellcheck="false"></textarea>
+      </div>
+    </div>
+  </div>
+  <script>
+    let token = localStorage.getItem('token') || '';
+    let toolsData = {};
+    let logsConfig = {};
+    const _R = {{.Root}};
+    const _S = {{.PathSep}};
+    let activeTab = 'tools';
+
+    const switchTab = (tab) => {
+      activeTab = tab;
+      render();
+    };
+
+
+    const api = async (path, method = 'GET', body = null) => {
+      const opts = { method, headers: { 'Authorization': 'Bearer ' + token } };
+      if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+      let url = '/api' + path;
+      if (token) {
+        url += (url.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
+      }
+      const res = await fetch(url, opts);
+      if (res.status === 401) { token = ''; localStorage.removeItem('token'); checkAuth(); throw new Error('未授权'); }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      return data;
+    };
+
+    const toast = (msg, type = 'success') => {
+      const el = document.createElement('div');
+      el.className = 'toast ' + type;
+      el.textContent = msg;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 3000);
+    };
+
+    const checkAuth = async () => {
+      if (!token) {
+        document.getElementById('loginPage').classList.add('active');
+        document.getElementById('app').style.display = 'none';
+        return;
+      }
+      try {
+        await api('/auth/check');
+        document.getElementById('loginPage').classList.remove('active');
+        document.getElementById('app').style.display = 'block';
+        render();
+      } catch {
+        document.getElementById('loginPage').classList.add('active');
+        document.getElementById('app').style.display = 'none';
+      }
+    };
+
+    window.login = async () => {
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: document.getElementById('loginUser').value, password: document.getElementById('loginPass').value })
+        });
+        const data = await res.json();
+        if (data.success) {
+          token = data.token;
+          localStorage.setItem('token', token);
+          checkAuth();
+        } else {
+          toast(data.error, 'error');
+        }
+      } catch (e) {
+        toast('登录失败', 'error');
+      }
+    };
+
+    const render = async () => {
+      try {
+        const res = await api('/tools');
+        toolsData = res.tools;
+        logsConfig = res.logs || {};
+        const toolNames = { '{{.CK_t0}}': '{{.UI_t0}}', '{{.CK_t1}}': '{{.UI_t1}}', '{{.CK_t2}}': '{{.UI_t2}}', '{{.CK_t3}}': '{{.UI_t3}}', '{{.CK_t4}}': '{{.UI_t4}}' };
+
+
+        const appHtml = `
+  <h1> Tools Standalone</h1>
+          <p class="subtitle">${res.arch.platform} / ${res.arch.archName}</p>
+          <div class="tab-bar">
+            <button class="tab-btn ${activeTab === 'tools' ? 'active' : ''}" onclick="switchTab('tools')">工具</button>
+            <button class="tab-btn ${activeTab === 'files' ? 'active' : ''}" onclick="switchTab('files')">文件</button>
+            <button class="tab-btn ${activeTab === 'system' ? 'active' : ''}" onclick="switchTab('system')">系统</button>
+          </div>
+          <div id="tab-tools" style="display:${activeTab === 'tools' ? 'block' : 'none'}">
+          ` + Object.entries(toolsData).map(([name, t]) => `
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <span class="dot ` + (t.running ? 'online' : (t.installed ? 'installed' : 'offline')) + `"></span>
+                  ` + toolNames[name] + `
+                </div>
+                <div style="display:flex;align-items:center;gap:12px">
+                  <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer" title="开机自动启动">
+                    <input type="checkbox" id="` + name + `-autostart" ` + (t.config?.autoStart ? 'checked' : '') + ` onchange="toggleAutoStart('` + name + `')"> 自启
+                  </label>
+                  <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer" title="启动后60秒自动清理二进制">
+                    <input type="checkbox" id="` + name + `-autodel" ` + (t.config?.autoDelete ? 'checked' : '') + ` onchange="saveConfig('` + name + `')"> 删文件
+                  </label>
+                  <span style="font-size:12px;color:var(--muted)">` + (t.running ? '运行中' : (t.installed ? '已安装' : '未安装')) + `</span>
+                </div>
+              </div>
+              ` + (name === '{{.CK_t0}}' ? `
+                <div class="form-group">
+                  <label>隧道模式</label>
+                  <select id="t0-mode" onchange="toggleT0Mode()">
+                    <option value="fixed" ` + (t.config?.mode !== 'quick' ? 'selected' : '') + `>固定隧道 (Token)</option>
+                    <option value="quick" ` + (t.config?.mode === 'quick' ? 'selected' : '') + `>临时隧道 (Quick)</option>
+                  </select>
+                </div>
+                <div id="t0-fixed" style="display:` + (t.config?.mode !== 'quick' ? 'block' : 'none') + `">
+                  <div class="form-group"><label>Token</label><input id="t0-token" value="` + (t.config?.token || '') + `" placeholder="Cloudflare Tunnel Token"></div>
+                  <div class="form-group"><label>隧道域名</label><input id="t0-domain" value="` + (t.config?.domain || '') + `" placeholder="例如: example.trycloudflare.com"></div>
+                </div>
+                <div id="t0-quick" style="display:` + (t.config?.mode === 'quick' ? 'block' : 'none') + `">
+                  <div class="form-row">
+                    <div class="form-group"><label>协议</label><select id="t0-protocol"><option value="http" ` + (t.config?.protocol !== 'https' ? 'selected' : '') + `>HTTP</option><option value="https" ` + (t.config?.protocol === 'https' ? 'selected' : '') + `>HTTPS</option></select></div>
+                    <div class="form-group"><label>本地端口</label><input type="number" id="t0-port" value="` + (t.config?.localPort || 8001) + `"></div>
+                  </div>
+                </div>
+  ` : '') + `
+    ` + (name === '{{.CK_t1}}' ? `
+  <div class="form-row">
+                  <div class="form-group"><label>监听端口</label><input type="number" id="t1-port" value="` + (t.config?.port || 8001) + `"></div>
+                  <div class="form-group"><label>首选域名</label><input id="t1-domain" value="` + (t.config?.preferredDomain || '') + `" placeholder="留空使用隧道域名"></div>
+                </div>
+                <div class="form-group">
+                   <label>UUID (代理鉴权)</label>
+                   <div style="display:flex;gap:8px">
+                     <input id="t1-uuid" value="` + (t.config?.uuid || '') + `" placeholder="留空自动生成">
+                     <button class="btn btn-primary btn-sm" onclick="document.getElementById('t1-uuid').value = genUUID()">随机</button>
+                   </div>
+                </div>
+                <div class="form-group" style="display:flex;flex-wrap:wrap;gap:15px">
+                  <label><input type="checkbox" id="t1-p0" ` + (t.config?.protocols?.p0?.enabled ? 'checked' : '') + `> {{.PN_d0}}</label>
+                  <label><input type="checkbox" id="t1-p1" ` + (t.config?.protocols?.p1?.enabled ? 'checked' : '') + `> {{.PN_d1}}</label>
+                  <label><input type="checkbox" id="t1-p2" ` + (t.config?.protocols?.p2?.enabled ? 'checked' : '') + `> {{.PN_d2}}</label>
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <label><input type="checkbox" id="t1-p3" ` + (t.config?.protocols?.p3?.enabled ? 'checked' : '') + `> {{.PN_d3}}</label>
+                    <input type="number" id="t1-p3-port" placeholder="端口" value="` + (t.config?.protocols?.p3?.port || '') + `" style="width:80px;padding:5px">
+                  </div>
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <label><input type="checkbox" id="t1-p4" ` + (t.config?.p4?.enabled ? 'checked' : '') + `> {{.PN_d4}}</label>
+                    <input type="number" id="t1-p4-port" placeholder="端口" value="` + (t.config?.p4?.port || '') + `" style="width:80px;padding:5px">
+                  </div>
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <label><input type="checkbox" id="t1-p5" ` + (t.config?.p5?.enabled ? 'checked' : '') + `> {{.PN_d5}}</label>
+                    <input type="number" id="t1-p5-port" placeholder="端口" value="` + (t.config?.p5?.port || '') + `" style="width:80px;padding:5px">
+                  </div>
+                  <label><input type="checkbox" id="t1-usecf" ` + (t.config?.useCF ? 'checked' : '') + `> 联动 CF 隧道</label>
+                </div>
+` + (t.shareLinks?.length ? ` <div class="form-group"><label>分享链接</label><textarea id="t1-links" rows="4" onclick="this.select()" readonly>` + t.shareLinks.map(l => l.link).join('\n') + `</textarea></div> <div class="form-group"><label>订阅链接 (Base64)</label><input id="t1-sub" value="` + (t.collection || '') + `" onclick="this.select()" readonly></div>` : '') + `
+  ` : '') + `
+  ` + (name === '{{.CK_t2}}' ? `
+  <div class="form-group">
+                  <label>版本</label>
+                  <select id="t2-version" onchange="toggleT2Ver()">
+                    <option value="v1" ` + (t.config?.version !== 'v0' ? 'selected' : '') + `>v1 (新版)</option>
+                    <option value="v0" ` + (t.config?.version === 'v0' ? 'selected' : '') + `> v0(旧版)</option>
+                  </select>
+                </div>
+                <div class="form-row">
+                  <div class="form-group"><label>服务器</label><input id="t2-server" value="` + (t.config?.server || '') + `" placeholder="v1: data.example.com / v0: data.example.com:443"></div>
+                  <div class="form-group"><label>密钥</label><input type="password" id="t2-key" value="` + (t.config?.key || '') + `"></div>
+                </div>
+                <div class="form-group">
+                  <label>备用下载地址 (可选)</label>
+                  <input id="t2-dlurl" value="` + (t.config?.downloadUrl || '') + `" placeholder="例: https://.../v1/\${arch} 或 https://.../v1/">
+                  <p style="font-size:11px;color:var(--muted);margin-top:4px">\${arch} 会自动替换为 v1-x64 或 v1-a64</p>
+                </div>
+                <div id="t2-v0" style="display:` + (t.config?.version === 'v0' ? 'block' : 'none') + `">
+                  <div class="form-group"><label><input type="checkbox" id="t2-tls" ` + (t.config?.tls !== false ? 'checked' : '') + `> 启用 TLS</label></div>
+                </div>
+                <div id="t2-v1" style="display:` + (t.config?.version !== 'v0' ? 'block' : 'none') + `">
+                  <div class="form-group">
+                    <label>UUID (留空自动生成)</label>
+                    <div style="display:flex;gap:8px">
+                      <input id="t2-uuid" value="` + (t.config?.uuid || '') + `" onclick="this.select()">
+                      <button class="btn btn-primary btn-sm" onclick="document.getElementById('t2-uuid').value = genUUID()">随机</button>
+                    </div>
+                  </div>
+                  <div class="form-group" style="display:flex;flex-wrap:wrap;gap:15px">
+                    <label><input type="checkbox" id="t2-insecure" ` + (t.config?.insecure ? 'checked' : '') + `> 跳过证书验证</label>
+                    <label><input type="checkbox" id="t2-gpu" ` + (t.config?.gpu ? 'checked' : '') + `> 上报 GPU</label>
+                    <label><input type="checkbox" id="t2-temp" ` + (t.config?.temperature ? 'checked' : '') + `> 上报温度</label>
+                    <label><input type="checkbox" id="t2-ipv6" ` + (t.config?.useIPv6 ? 'checked' : '') + `> 使用 IPv6</label>
+                    <label><input type="checkbox" id="t2-no-update" ` + (t.config?.disableAutoUpdate !== false ? 'checked' : '') + `> 禁用自动更新</label>
+                    <label><input type="checkbox" id="t2-no-cmd" ` + (t.config?.disableCommandExecute ? 'checked' : '') + `> 禁用命令执行</label>
+                  </div>
+                </div>
+` : '') + `
+  ` + (name === '{{.CK_t3}}' ? `
+  <div class="form-row">
+                  <div class="form-group"><label>API 端点</label><input id="t3-server" value="` + (t.config?.server || '') + `" placeholder="https://example.com"></div>
+                  <div class="form-group"><label>Token</label><input type="password" id="t3-key" value="` + (t.config?.key || '') + `"></div>
+                </div>
+  <div class="form-group" style="display:flex;flex-wrap:wrap;gap:15px">
+    <label><input type="checkbox" id="t3-insecure" ` + (t.config?.insecure ? 'checked' : '') + `> 跳过证书验证</label>
+    <label><input type="checkbox" id="t3-gpu" ` + (t.config?.gpu ? 'checked' : '') + `> GPU 监控</label>
+    <label><input type="checkbox" id="t3-no-update" ` + (t.config?.disableAutoUpdate !== false ? 'checked' : '') + `> 禁用自动更新</label>
+  </div>
+` : '') + `
+    ` + (name === '{{.CK_t4}}' ? `
+  <div class="form-group">
+    <label>模式</label>
+    <select id="t4-mode" disabled>
+      <option value="tunnel" selected>被控端模式 (连接转发机)</option>
+    </select>
+  </div>
+  <div id="t4-tunnel" style="display:block">
+    <div class="form-group"><label>远程服务器地址 (IP:Port)</label><input id="t4-remote-server" value="` + (t.config?.remoteServer || '') + `" placeholder="例如: 1.2.3.4:25964"></div>
+    <div class="form-group"><label>远程映射端口 (被映射到远程公网的端口)</label><input type="number" id="t4-exposed-port" value="` + (t.config?.exposedPort || '') + `" placeholder="例如: 8080"></div>
+    <div class="form-group">
+      <label><input type="checkbox" id="t4-tunnel-multiplex" ` + (t.config?.tunnelMultiplex !== false ? 'checked' : '') + ` onchange="toggleT4TunnelFields()"> 同时复用本端面板 (Web + SOCKS5 代理)</label>
+    </div>
+    <div class="form-group"><label>代理/隧道认证密码</label><input type="password" id="t4-auth-tunnel" value="` + (t.config?.auth || '') + `" placeholder="如果有请填写"></div>
+    <div style="background:rgba(0,0,0,0.2);padding:10px;border-radius:6px;margin-bottom:10px">
+      <p style="font-size:12px;color:var(--primary);margin-bottom:6px">VPS 端 (服务端) 命令行参考：</p>
+      <textarea rows="2" readonly onclick="this.select()" style="width:100%;background:transparent;border:none;color:var(--text);font-family:monospace;font-size:11px;resize:none">gost -L relay+tls://` + (t.config?.auth ? t.config?.auth + '@' : '') + `:` + (t.config?.remoteServer?.split(':')?.[1] || '隧道端口') + `</textarea>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:10px">提示：本模式作为 Agent 主动连接中转服务器。若开启复用，远程服务器映射的端口将同时具备管理面板和代理功能。</p>
+  </div>
+` : '') + `
+  <div class="btn-group">
+                ` + (!t.installed ? '<button class="btn btn-primary btn-sm" onclick="toolAction(\'' + name + '\',\'install\')">安装</button>' : '') + `
+                <button class="btn btn-primary btn-sm" onclick="saveConfig(\'` + name + `\')">保存配置</button>
+                ` + (t.installed && !t.running ? '<button class="btn btn-success btn-sm" onclick="toolAction(\'' + name + '\',\'start\')">启动</button>' : '') + `
+                ` + (t.running ? '<button class="btn btn-warning btn-sm" onclick="toolAction(\'' + name + '\',\'stop\')">停止</button>' : '') + `
+                ` + (t.running ? '<button class="btn btn-primary btn-sm" onclick="toolAction(\'' + name + '\',\'restart\')">重启</button>' : '') + `
+                ` + (t.installed ? '<button class="btn btn-danger btn-sm" onclick="if(confirm(\'确定删除二进制文件？\'))toolAction(\'' + name + '\',\'deleteBin\')">删文件</button>' : '') + `
+                ` + (t.installed && !t.running ? '<button class="btn btn-danger btn-sm" onclick="deleteTool(\'' + name + '\')">删除</button>' : '') + `
+              </div>
+            </div>
+  `).join('') + `
+          </div>
+          <div id="tab-files" style="display:${activeTab === 'files' ? 'block' : 'none'}">
+            <div class="card">
+              <div class="breadcrumb" id="breadcrumb"></div>
+              <div style="display:flex;gap:10px;margin-bottom:16px">
+                <button class="btn btn-primary btn-sm" onclick="createItem('file')">新建文件</button>
+                <button class="btn btn-primary btn-sm" onclick="createItem('directory')">新建文件夹</button>
+                <button class="btn btn-primary btn-sm" onclick="loadFiles()">刷新</button>
+              </div>
+              <div class="file-list" id="fileList"></div>
+            </div>
+          </div>
+          <div id="tab-system" style="display:${activeTab === 'system' ? 'block' : 'none'}">
+            <div class="card">
+              <div class="card-title">管理账号</div>
+              <div class="form-row">
+                <div class="form-group"><label>新用户名</label><input id="new-user" placeholder="不修改请留空"></div>
+                <div class="form-group"><label>新密码</label><input type="password" id="new-pass" placeholder="不修改请留空"></div>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="updateAuth()">更新账号</button>
+            </div>
+            <div class="card">
+              <div class="card-title">系统设置</div>
+              <div class="form-group">
+                <label>Web 服务端口 (0 代表自动)</label>
+                <div style="display:flex;gap:8px">
+                  <input type="number" id="sys-port" value="${res.webPort || 0}" placeholder="留空或 0 从环境变量获取">
+                  <button class="btn btn-primary btn-sm" onclick="saveSystemConfig()">保存</button>
+                </div>
+                <p style="font-size:12px;color:var(--muted);margin-top:4px">注意：修改端口后需要重启服务才会生效</p>
+              </div>
+            </div>
+            <div class="card" id="logsCard">
+              <div class="card-header">
+                <div class="card-title">运行日志</div>
+                <button class="btn btn-primary btn-sm" onclick="copyLogs()">复制日志</button>
+              </div>
+              <div id="logsSettings"></div>
+              <div class="logs" id="logsContainer"></div>
+            </div>
+          </div>
+`;
+    document.getElementById('app').innerHTML = appHtml;
+        if (activeTab === 'files') loadFiles(_R);
+        const logsSettings = document.getElementById('logsSettings');
+        if (logsSettings) {
+          logsSettings.innerHTML = [
+            '<div class="form-group" style="display:flex;flex-wrap:wrap;gap:15px;margin-top:10px">',
+            '<label><input type="checkbox" id="log-enabled" onchange="saveLogsConfig()"> 启用日志</label>',
+            '<label><input type="checkbox" id="log-tools" onchange="saveLogsConfig()"> 工具</label>',
+            '<label><input type="checkbox" id="log-bots" onchange="saveLogsConfig()"> Bot</label>',
+            '<label><input type="checkbox" id="log-probe" onchange="saveLogsConfig()"> 探针</label>',
+            '<label><input type="checkbox" id="log-api" onchange="saveLogsConfig()"> API</label>',
+            '</div>',
+            '<div class="form-group">',
+            '<label>保留日志条数</label>',
+            '<input type="number" id="log-max" onchange="saveLogsConfig()">',
+            '</div>'
+          ].join('');
+        }
+        const logEnabled = document.getElementById('log-enabled');
+        if (logEnabled) logEnabled.checked = !!logsConfig.enabled;
+        const logTools = document.getElementById('log-tools');
+        if (logTools) logTools.checked = !!logsConfig.logTools;
+        const logBots = document.getElementById('log-bots');
+        if (logBots) logBots.checked = !!logsConfig.logBots;
+        const logProbe = document.getElementById('log-probe');
+        if (logProbe) logProbe.checked = logsConfig.logProbe !== false;
+        const logApi = document.getElementById('log-api');
+        if (logApi) logApi.checked = !!logsConfig.logApi;
+        const logMax = document.getElementById('log-max');
+        if (logMax) logMax.value = logsConfig.maxLines || 500;
+        loadLogs();
+
+      } catch (e) {
+        console.error('Render error:', e);
+        toast(e.message, 'error');
+      }
+    };
+
+    window.genUUID = () => {
+      if (crypto && crypto.randomUUID) return crypto.randomUUID();
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    };
+
+    window.toggleT0Mode = () => {
+      const mode = document.getElementById('t0-mode').value;
+      document.getElementById('t0-fixed').style.display = mode === 'fixed' ? 'block' : 'none';
+      document.getElementById('t0-quick').style.display = mode === 'quick' ? 'block' : 'none';
+    };
+
+    window.toggleT2Ver = () => {
+      const ver = document.getElementById('t2-version').value;
+      document.getElementById('t2-v0').style.display = ver === 'v0' ? 'block' : 'none';
+      document.getElementById('t2-v1').style.display = ver === 'v1' ? 'block' : 'none';
+    };
+
+    window.toggleAutoStart = async (name) => {
+      try {
+        const checked = document.getElementById(name + '-autostart').checked;
+        await api('/tools/' + name + '/config', 'POST', { autoStart: checked });
+        toast(checked ? '已启用自启动' : '已禁用自启动');
+      } catch (e) {
+        toast(e.message, 'error');
+        render();
+      }
+    };
+
+    window.toggleT4TunnelFields = () => {
+      const multi = document.getElementById('t4-tunnel-multiplex').checked;
+      document.getElementById('t4-tunnel-custom').style.display = multi ? 'none' : 'block';
+    };
+
+    window.saveConfig = async (name) => {
+      try {
+        let cfg = {};
+        if (name === '{{.CK_t0}}') {
+          cfg = {
+            mode: document.getElementById('t0-mode').value,
+            token: document.getElementById('t0-token').value,
+            domain: document.getElementById('t0-domain')?.value || '',
+            protocol: document.getElementById('t0-protocol').value,
+            localPort: parseInt(document.getElementById('t0-port').value) || 8001,
+            autoDelete: document.getElementById(name + '-autodel')?.checked
+          };
+        } else if (name === '{{.CK_t1}}') {
+          cfg = {
+            autoDelete: document.getElementById(name + '-autodel')?.checked,
+            port: parseInt(document.getElementById('t1-port').value) || 8001,
+            uuid: document.getElementById('t1-uuid')?.value || '',
+            preferredDomain: document.getElementById('t1-domain')?.value || '',
+            useCF: document.getElementById('t1-usecf')?.checked,
+            protocols: {
+              p0: { enabled: document.getElementById('t1-p0')?.checked, wsPath: '{{.DP_0}}' },
+              p1: { enabled: document.getElementById('t1-p1')?.checked, wsPath: '{{.DP_1}}' },
+              p2: { enabled: document.getElementById('t1-p2')?.checked, wsPath: '{{.DP_2}}' },
+              p3: { enabled: document.getElementById('t1-p3')?.checked, wsPath: '{{.DP_3}}', port: parseInt(document.getElementById('t1-p3-port').value) || 0 }
+            },
+            p4: { enabled: document.getElementById('t1-p4')?.checked, port: parseInt(document.getElementById('t1-p4-port').value) || 0 },
+            p5: { enabled: document.getElementById('t1-p5')?.checked, port: parseInt(document.getElementById('t1-p5-port').value) || 0 }
+          };
+        } else if (name === '{{.CK_t2}}') {
+          cfg = {
+            autoDelete: document.getElementById(name + '-autodel')?.checked,
+            version: document.getElementById('t2-version').value,
+            server: document.getElementById('t2-server').value,
+            key: document.getElementById('t2-key').value,
+            tls: document.getElementById('t2-tls')?.checked,
+            uuid: document.getElementById('t2-uuid')?.value || '',
+            insecure: document.getElementById('t2-insecure')?.checked,
+            gpu: document.getElementById('t2-gpu')?.checked,
+            temperature: document.getElementById('t2-temp')?.checked,
+            useIPv6: document.getElementById('t2-ipv6')?.checked,
+            disableAutoUpdate: document.getElementById('t2-no-update')?.checked,
+            disableCommandExecute: document.getElementById('t2-no-cmd')?.checked,
+            downloadUrl: document.getElementById('t2-dlurl')?.value || ''
+          };
+        } else if (name === '{{.CK_t3}}') {
+          cfg = {
+            autoDelete: document.getElementById(name + '-autodel')?.checked,
+            server: document.getElementById('t3-server').value,
+            key: document.getElementById('t3-key').value,
+            insecure: document.getElementById('t3-insecure')?.checked,
+            gpu: document.getElementById('t3-gpu')?.checked,
+            disableAutoUpdate: document.getElementById('t3-no-update')?.checked
+          };
+        } else if (name === '{{.CK_t4}}') {
+          cfg = {
+            autoDelete: document.getElementById(name + '-autodel')?.checked,
+            mode: 'tunnel',
+            exposedPort: parseInt(document.getElementById('t4-exposed-port')?.value) || 0,
+            localAddr: document.getElementById('t4-local-addr')?.value || '127.0.0.1:80',
+            remoteServer: document.getElementById('t4-remote-server')?.value || '',
+            tunnelMultiplex: document.getElementById('t4-tunnel-multiplex')?.checked,
+            auth: document.getElementById('t4-auth-tunnel')?.value || ''
+          };
+        }
+        await api('/tools/' + name + '/config', 'POST', cfg);
+        toast('配置已保存');
+      } catch (e) {
+        toast(e.message, 'error');
+      }
+    };
+
+    window.saveLogsConfig = async () => {
+      try {
+        const cfg = {
+          enabled: document.getElementById('log-enabled')?.checked,
+          logTools: document.getElementById('log-tools')?.checked,
+          logBots: document.getElementById('log-bots')?.checked,
+          logProbe: document.getElementById('log-probe')?.checked,
+          logApi: document.getElementById('log-api')?.checked,
+          maxLines: parseInt(document.getElementById('log-max')?.value) || 500
+        };
+        await api('/logs/config', 'POST', cfg);
+        logsConfig = cfg;
+        toast('日志设置已更新');
+      } catch (e) {
+        toast(e.message, 'error');
+      }
+    };
+
+    window.copyLogs = () => {
+      const container = document.getElementById('logsContainer');
+      if (!container) return;
+      const text = container.innerText || '';
+      if (!text.trim()) return toast('没有可复制的日志', 'error');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => toast('日志已复制')).catch(() => toast('复制失败', 'error'));
+        return;
+      }
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        toast('日志已复制');
+      } catch {
+        toast('复制失败', 'error');
+      }
+      ta.remove();
+    };
+
+    window.updateAuth = async () => {
+      try {
+        const username = document.getElementById('new-user').value;
+        const password = document.getElementById('new-pass').value;
+        if (!username && !password) return toast('请输入要修改的内容', 'error');
+        await api('/auth/update', 'POST', { username, password });
+        toast('账号已更新，请重新登录');
+        setTimeout(() => { token = ''; localStorage.removeItem('token'); checkAuth(); }, 1500);
+      } catch (e) {
+        toast(e.message, 'error');
+      }
+    };
+
+    window.saveSystemConfig = async () => {
+      try {
+        const port = document.getElementById('sys-port').value;
+        await api('/system/config', 'POST', { webPort: port });
+        toast('系统设置已更新');
+      } catch (e) {
+        toast(e.message, 'error');
+      }
+    };
+
+    window.toolAction = async (name, action) => {
+      try {
+        toast(action === 'install' ? '正在安装...' : (action === 'start' ? '正在启动...' : '执行中...'));
+        await api('/tools/' + name + '/' + action, 'POST');
+        toast('操作成功');
+        render();
+      } catch (e) {
+        toast(e.message, 'error');
+        render();
+      }
+    };
+
+    window.deleteTool = async (name) => {
+      if (!confirm('确定要删除吗？')) return;
+      try {
+        await api('/tools/' + name + '/delete', 'POST');
+        toast('已删除');
+        render();
+      } catch (e) {
+        toast(e.message, 'error');
+      }
+    };
+
+    const formatSize = (bytes) => {
+      if (bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };
+
+    let currentPath = '';
+    const loadFiles = async (path = currentPath) => {
+      try {
+        const res = await api('/files/list?path=' + encodeURIComponent(path));
+        currentPath = path;
+        renderFiles(res.items, res.parentDir);
+        renderBreadcrumb(path);
+      } catch (e) { toast(e.message, 'error'); }
+    };
+
+    const renderBreadcrumb = (path) => {
+      const el = document.getElementById('breadcrumb');
+      if (!el) return;
+      let html = '<span class="breadcrumb-item" onclick="loadFiles(decodeURIComponent(\'' + encodeURIComponent(_R) + '\'))">ROOT</span>';
+      let acc = '';
+      const parts = path.split(/[\\/]/).filter(p => p && p !== '');
+      if (_S === '/') {
+        parts.forEach(p => {
+          acc += '/' + p;
+          html += ' <span style="color:var(--muted)">/</span> <span class="breadcrumb-item" onclick="loadFiles(decodeURIComponent(\'' + encodeURIComponent(acc) + '\'))">' + p + '</span>';
+        });
+      } else {
+        acc = _R;
+        parts.forEach((p, i) => {
+          if (i === 0 && p.includes(':')) return;
+          acc += (acc.endsWith(_S) ? '' : _S) + p;
+          html += ' <span style="color:var(--muted)">\\</span> <span class="breadcrumb-item" onclick="loadFiles(decodeURIComponent(\'' + encodeURIComponent(acc) + '\'))">' + p + '</span>';
+        });
+      }
+      el.innerHTML = html;
+    };
+
+    const getFileIcon = (name) => {
+      const ext = name.split('.').pop().toLowerCase();
+      const map = {
+        js: '📜', json: '⚙️', css: '🎨', html: '🌐',
+        png: '🖼️', jpg: '🖼️', jpeg: '🖼️', gif: '🖼️', svg: '🖼️',
+        zip: '📦', tar: '📦', gz: '📦', rar: '📦', '7z': '📦',
+        txt: '📝', md: '📝', log: '📝', yml: '⚙️', yaml: '⚙️'
+      };
+      return map[ext] || '📄';
+    };
+
+    const renderFiles = (items, parentDir) => {
+      const el = document.getElementById('fileList');
+      if (!el) return;
+      let htmlIdx = '';
+      if (currentPath) {
+        htmlIdx += '<div class="file-item" onclick="loadFiles(\'' + parentDir + '\')"><span class="file-icon">📁</span><span class="file-name">..</span></div>';
+      }
+      items.sort((a, b) => (b.isDirectory - a.isDirectory) || a.name.localeCompare(b.name)).forEach(item => {
+        const icon = item.isDirectory ? '📁' : getFileIcon(item.name);
+        htmlIdx += '<div class="file-item" onclick="openFile(\'' + item.name + '\',' + item.isDirectory + ')" oncontextmenu="fileContextMenu(event,\'' + item.name + '\',' + item.isDirectory + ')">';
+        htmlIdx += '<span class="file-icon">' + icon + '</span>';
+        htmlIdx += '<span class="file-name">' + item.name + '</span>';
+        htmlIdx += '<span class="file-meta">' + (item.isDirectory ? '-' : formatSize(item.size)) + '</span>';
+        htmlIdx += '</div>';
+      });
+      el.innerHTML = htmlIdx;
+    };
+
+    const openFile = async (name, isDir) => {
+      if (isDir) return loadFiles(currentPath ? currentPath + '/' + name : name);
+      try {
+        const res = await api('/files/read', 'POST', { path: currentPath ? currentPath + '/' + name : name });
+        document.getElementById('editorTitle').textContent = '编辑: ' + name;
+        document.getElementById('editorTextarea').value = res.content;
+        document.getElementById('editorModal').classList.add('active');
+        document.getElementById('editorModal').dataset.path = currentPath ? currentPath + '/' + name : name;
+      } catch (e) { toast(e.message, 'error'); }
+    };
+
+    window.saveFile = async () => {
+      const path = document.getElementById('editorModal').dataset.path;
+      const content = document.getElementById('editorTextarea').value;
+      try {
+        await api('/files/save', 'POST', { path, content });
+        toast('文件已保存');
+        closeEditor();
+      } catch (e) { toast(e.message, 'error'); }
+    };
+
+    window.closeEditor = () => { document.getElementById('editorModal').classList.remove('active'); };
+
+    window.createItem = async (type) => {
+      const name = prompt('请输入' + (type === 'directory' ? '文件夹' : '文件') + '名称:');
+      if (!name) return;
+      try {
+        await api('/files/create', 'POST', { path: currentPath ? currentPath + '/' + name : name, type });
+        loadFiles();
+      } catch (e) { toast(e.message, 'error'); }
+    };
+
+    window.fileContextMenu = (e, name, isDir) => {
+      e.preventDefault();
+      const menu = document.getElementById('fileContextMenu');
+      const path = currentPath ? currentPath + '/' + name : name;
+      menu.style.display = 'block';
+      menu.style.left = e.pageX + 'px';
+      menu.style.top = e.pageY + 'px';
+      menu.innerHTML = [
+        '<div class="context-menu-item" onclick="renameItem(\'' + path + '\',\'' + name + '\')">重命名</div>',
+        '<div class="context-menu-item danger" onclick="deleteItem(\'' + path + '\')">删除</div>'
+      ].join('');
+      document.onclick = () => { menu.style.display = 'none'; document.onclick = null; };
+    };
+
+    window.renameItem = async (oldPath, name) => {
+      const newName = prompt('重命名 ' + name + ' 为:', name);
+      if (!newName || newName === name) return;
+      const newPath = oldPath.substring(0, oldPath.lastIndexOf('/') + 1) + newName;
+      try {
+        await api('/files/rename', 'POST', { oldPath, newPath });
+        loadFiles();
+      } catch (e) { toast(e.message, 'error'); }
+    };
+
+    window.deleteItem = async (path) => {
+      if (!confirm('确定要删除 ' + path + ' 吗？')) return;
+      try {
+        await api('/files/delete', 'POST', { path });
+        loadFiles();
+      } catch (e) { toast(e.message, 'error'); }
+    };
+
+    const loadLogs = async () => {
+      try {
+        const res = await api('/logs');
+        const container = document.getElementById('logsContainer');
+        if (container) {
+          const filtered = res.logs.filter(l => {
+            if (!logsConfig?.enabled) return false;
+            if (l.type === 'tool' && logsConfig.logTools === false) return false;
+            if (l.type === 'bot' && logsConfig.logBots === false) return false;
+            if (l.type === 'api' && logsConfig.logApi === false) return false;
+            if (l.type === 'probe' && logsConfig.logProbe === false) return false;
+            return true;
+          });
+          container.innerHTML = filtered.slice(-50).map(l => '<div class="log-entry">[' + l.time.substr(11, 8) + '] ' + l.msg + '</div>').join('');
+          container.scrollTop = container.scrollHeight;
+        }
+      } catch {}
+    };
+
+    checkAuth();
+    setInterval(loadLogs, 5000);
+  </script>
+</body>
+</html>

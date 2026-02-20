@@ -1,0 +1,15 @@
+# Binaries
+server
+server.exe
+server-linux-amd64
+server-linux-arm64
+tools-standalone.exe
+
+# Data and Secret
+data/
+config.json
+filemap.dat
+
+# System
+.DS_Store
+*.log

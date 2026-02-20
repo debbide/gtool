@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>在线工具箱 - 简洁高效的开发工具</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+</head>
+
+<body>
+  <!-- Theme Toggle -->
+  <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+
+  <div class="container">
+    <!-- 首页 -->
+    <div id="home-page">
+      <header class="header">
+        <h1>🛠️ 在线工具箱</h1>
+        <p class="subtitle">简洁高效的在线开发工具，无需安装，即开即用</p>
+        <!-- Search Box -->
+        <div class="search-container">
+          <div class="search-wrapper">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" id="search-input" placeholder="搜索工具..."
+              oninput="filterTools(this.value)">
+          </div>
+        </div>
+      </header>
+
+      <div class="tools-grid" id="tools-grid"></div>
+    </div>
+
+    <!-- 工具页面容器 -->
+    <div id="tool-page" class="hidden">
+      <button class="btn-back" onclick="goHome()">← 返回</button>
+      <div id="tool-content"></div>
+    </div>
+  </div>
+
+  <script src="tools.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
