@@ -682,6 +682,22 @@ func defaultToolCfg(name string) ToolCfg {
 	}
 }
 
+func getTmpDir() string {
+	tmpDir := filepath.Join(DataDir, "tmp")
+	_ = os.MkdirAll(tmpDir, 0755)
+	return tmpDir
+}
+
+func cleanupTmpFile(path string) {
+	if path == "" {
+		return
+	}
+	go func() {
+		time.Sleep(2 * time.Second)
+		_ = os.Remove(path)
+	}()
+}
+
 func mergeToolCfgWithRaw(dst ToolCfg, src ToolCfg, raw map[string]json.RawMessage) ToolCfg {
 	if _, ok := raw["enabled"]; ok {
 		dst.Enabled = src.Enabled
@@ -1073,7 +1089,7 @@ func startSingBox() error {
 	ensureCert()
 	genConfig := genS1Cfg(cfg)
 	data, _ := json.MarshalIndent(genConfig, "", "  ")
-	plainPath := filepath.Join(os.TempDir(), getRandomFileName("sing-box-plain", "cfg")+".json")
+	plainPath := filepath.Join(getTmpDir(), getRandomFileName("sing-box-plain", "cfg")+".json")
 	os.WriteFile(plainPath, data, 0644)
 	err := startToolProcess("sing-box", binPath, []string{"run", "-c", plainPath})
 	if err != nil {
@@ -1084,6 +1100,7 @@ func startSingBox() error {
 		}
 		return err
 	}
+	cleanupTmpFile(plainPath)
 	cfg.Enabled = true
 	GlobalConfig.Tools["sing-box"] = cfg
 	saveConfig()
@@ -1462,7 +1479,7 @@ use_ipv6_country_code: %t
 uuid: %s
 `, cfg.Key, cfg.DisableAutoUpdate, cfg.DisableCommandExecute, cfg.Gpu, cfg.Insecure, server, cfg.Temperature, useTls, cfg.UseIPv6, cfg.UUID)
 
-		cfgPath := filepath.Join(os.TempDir(), getRandomFileName("nezha-v1", "cfg")+".yaml")
+		cfgPath := filepath.Join(getTmpDir(), getRandomFileName("nezha-v1", "cfg")+".yaml")
 		if err := os.WriteFile(cfgPath, []byte(yamlContent), 0644); err != nil {
 			return err
 		}
@@ -1474,6 +1491,7 @@ uuid: %s
 			}
 			return err
 		}
+		cleanupTmpFile(cfgPath)
 		cfg.Enabled = true
 		GlobalConfig.Tools["nezha"] = cfg
 		saveConfig()
@@ -1537,10 +1555,12 @@ func startKomari() error {
 		"disable_auto_update": cfg.DisableAutoUpdate,
 	}
 
-	// Write plain config directly (skip encryption for simplicity in Go version unless needed)
-	plainPath := filepath.Join(os.TempDir(), getRandomFileName("komari-plain", "cfg")+".json")
+	// Write plain config to DataDir tmp (avoid /tmp issues in containers)
+	plainPath := filepath.Join(getTmpDir(), getRandomFileName("komari-plain", "cfg")+".json")
 	data, _ := json.MarshalIndent(kmCfg, "", "  ")
-	os.WriteFile(plainPath, data, 0644)
+	if err := os.WriteFile(plainPath, data, 0644); err != nil {
+		return err
+	}
 
 	err := startToolProcess("komari", binPath, []string{"--config", plainPath})
 	if err != nil {
@@ -1550,6 +1570,7 @@ func startKomari() error {
 		}
 		return err
 	}
+	cleanupTmpFile(plainPath)
 	cfg.Enabled = true
 	GlobalConfig.Tools["komari"] = cfg
 	saveConfig()
