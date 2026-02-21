@@ -26,3 +26,4 @@ Thumbs.db
 .vscode/
 *.log
 *.tmp
+push_it.py
