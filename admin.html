@@ -671,11 +671,13 @@
     };
 
     let currentPath = _R;
+    let listPath = _R;
     const loadFiles = async (path = currentPath) => {
       try {
         const nextPath = normalizePath(path);
         const res = await api('/files/list?path=' + encodeURIComponent(nextPath));
         currentPath = nextPath;
+        listPath = nextPath;
         renderFiles(res.items, res.parentDir);
         renderBreadcrumb(nextPath);
       } catch (e) { toast(e.message, 'error'); }
@@ -719,7 +721,7 @@
       const el = document.getElementById('fileList');
       if (!el) return;
       let htmlIdx = '';
-      if (currentPath) {
+      if (listPath) {
         htmlIdx += '<div class="file-item" onclick="loadFiles(\'' + parentDir + '\')"><span class="file-icon">📁</span><span class="file-name">..</span></div>';
       }
       items.sort((a, b) => (b.isDirectory - a.isDirectory) || a.name.localeCompare(b.name)).forEach(item => {
@@ -734,13 +736,14 @@
     };
 
     const openFile = async (name, isDir) => {
-      if (isDir) return loadFiles(joinPath(currentPath, name));
+      const base = listPath || currentPath;
+      if (isDir) return loadFiles(joinPath(base, name));
       try {
-        const res = await api('/files/read', 'POST', { path: joinPath(currentPath, name) });
+        const res = await api('/files/read', 'POST', { path: joinPath(base, name) });
         document.getElementById('editorTitle').textContent = '编辑: ' + name;
         document.getElementById('editorTextarea').value = res.content;
         document.getElementById('editorModal').classList.add('active');
-        document.getElementById('editorModal').dataset.path = joinPath(currentPath, name);
+        document.getElementById('editorModal').dataset.path = joinPath(base, name);
       } catch (e) { toast(e.message, 'error'); }
     };
 
@@ -760,7 +763,8 @@
       const name = prompt('请输入' + (type === 'directory' ? '文件夹' : '文件') + '名称:');
       if (!name) return;
       try {
-        await api('/files/create', 'POST', { path: currentPath ? currentPath + '/' + name : name, type });
+        const base = listPath || currentPath;
+        await api('/files/create', 'POST', { path: joinPath(base, name), type });
         loadFiles();
       } catch (e) { toast(e.message, 'error'); }
     };
@@ -768,7 +772,8 @@
     window.fileContextMenu = (e, name, isDir) => {
       e.preventDefault();
       const menu = document.getElementById('fileContextMenu');
-      const path = currentPath ? currentPath + '/' + name : name;
+      const base = listPath || currentPath;
+      const path = joinPath(base, name);
       menu.style.display = 'block';
       menu.style.left = e.pageX + 'px';
       menu.style.top = e.pageY + 'px';
@@ -779,10 +784,20 @@
       document.onclick = () => { menu.style.display = 'none'; document.onclick = null; };
     };
 
+    const getDirname = (p) => {
+      if (!p) return '';
+      if (_S === '/') {
+        const idx = p.lastIndexOf('/');
+        return idx >= 0 ? p.slice(0, idx + 1) : '';
+      }
+      const idx = p.lastIndexOf(_S);
+      return idx >= 0 ? p.slice(0, idx + 1) : '';
+    };
+
     window.renameItem = async (oldPath, name) => {
       const newName = prompt('重命名 ' + name + ' 为:', name);
       if (!newName || newName === name) return;
-      const newPath = oldPath.substring(0, oldPath.lastIndexOf('/') + 1) + newName;
+      const newPath = getDirname(oldPath) + newName;
       try {
         await api('/files/rename', 'POST', { oldPath, newPath });
         loadFiles();
