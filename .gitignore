@@ -1,6 +1,9 @@
 # Binaries and executables
 server
 server.exe
+gtool
+gtool.exe
+gtool-linux
 server-linux-*
 tools-standalone.exe
 tool
