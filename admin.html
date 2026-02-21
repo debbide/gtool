@@ -147,8 +147,12 @@
       }
       const res = await fetch(url, opts);
       if (res.status === 401) { token = ''; localStorage.removeItem('token'); checkAuth(); throw new Error('未授权'); }
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const rawText = await res.text();
+      let data = {};
+      if (rawText) {
+        try { data = JSON.parse(rawText); } catch { throw new Error(rawText); }
+      }
+      if (!res.ok) throw new Error(data.error || rawText || '请求失败');
       return data;
     };
 
@@ -646,19 +650,41 @@
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
 
-    let currentPath = '';
+    const normalizePath = (p) => {
+      if (!p) return '';
+      if (_S === '/') {
+        p = p.replace(/\/+/g, '/');
+        if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
+        return p;
+      }
+      p = p.replace(/[\\/]+/g, _S);
+      return p;
+    };
+
+    const joinPath = (base, name) => {
+      if (!base) return name;
+      if (_S === '/') {
+        const trimmed = base.replace(/\/+$/g, '') || '/';
+        return (trimmed === '/' ? '' : trimmed) + '/' + name;
+      }
+      return base.replace(/[\\/]+$/g, '') + _S + name;
+    };
+
+    let currentPath = _R;
     const loadFiles = async (path = currentPath) => {
       try {
-        const res = await api('/files/list?path=' + encodeURIComponent(path));
-        currentPath = path;
+        const nextPath = normalizePath(path);
+        const res = await api('/files/list?path=' + encodeURIComponent(nextPath));
+        currentPath = nextPath;
         renderFiles(res.items, res.parentDir);
-        renderBreadcrumb(path);
+        renderBreadcrumb(nextPath);
       } catch (e) { toast(e.message, 'error'); }
     };
 
     const renderBreadcrumb = (path) => {
       const el = document.getElementById('breadcrumb');
       if (!el) return;
+      path = normalizePath(path);
       let html = '<span class="breadcrumb-item" onclick="loadFiles(decodeURIComponent(\'' + encodeURIComponent(_R) + '\'))">ROOT</span>';
       let acc = '';
       const parts = path.split(/[\\/]/).filter(p => p && p !== '');
@@ -708,13 +734,13 @@
     };
 
     const openFile = async (name, isDir) => {
-      if (isDir) return loadFiles(currentPath ? currentPath + '/' + name : name);
+      if (isDir) return loadFiles(joinPath(currentPath, name));
       try {
-        const res = await api('/files/read', 'POST', { path: currentPath ? currentPath + '/' + name : name });
+        const res = await api('/files/read', 'POST', { path: joinPath(currentPath, name) });
         document.getElementById('editorTitle').textContent = '编辑: ' + name;
         document.getElementById('editorTextarea').value = res.content;
         document.getElementById('editorModal').classList.add('active');
-        document.getElementById('editorModal').dataset.path = currentPath ? currentPath + '/' + name : name;
+        document.getElementById('editorModal').dataset.path = joinPath(currentPath, name);
       } catch (e) { toast(e.message, 'error'); }
     };
 

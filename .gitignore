@@ -4,6 +4,7 @@ server.exe
 gtool
 gtool.exe
 gtool-linux
+gtool-linux-amd64
 server-linux-*
 tools-standalone.exe
 tool
