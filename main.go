@@ -1829,7 +1829,7 @@ func setupAPIRoutes() {
 		}
 		entries, err := os.ReadDir(fullPath)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			sendJSONError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		var items []FileItem
